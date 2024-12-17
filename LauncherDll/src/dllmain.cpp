@@ -1,47 +1,8 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
-#include <charconv>
-#include <iostream>
-
 #include "pch.h"
-
-#include <string>
-#include <Psapi.h>
-#include <sstream>
-
 #include "Hooks.h"
 #include "Addresses.h"
-
-void SetupConsole()
-{
-	AllocConsole();
-
-	FILE* stdinFile;
-	FILE* stdoutFile;
-	FILE* stderrFile;
-
-	// Redirect stdin
-	if (freopen_s(&stdinFile, "conin$", "r", stdin) != 0) 
-	{
-		std::cerr << "Error redirecting stdin\n";
-	}
-
-	// Redirect stdout
-	if (freopen_s(&stdoutFile, "conout$", "w", stdout) != 0) 
-	{
-		std::cerr << "Error redirecting stdout\n";
-	}
-
-	// Redirect stderr
-	if (freopen_s(&stderrFile, "conout$", "w", stderr) != 0) 
-	{
-		std::cerr << "Error redirecting stderr\n";
-	}
-
-	SetConsoleOutputCP(CP_UTF8);
-	SetConsoleCP(CP_UTF8);
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	//SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_INTENSITY);
-}
+#include "Log.h"
 
 BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
@@ -49,7 +10,7 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
     {
     case DLL_PROCESS_ATTACH:
 	{
-		SetupConsole();
+		//Log::Get().Print("thing");
 
 	    HWND launcherHwnd = FindWindowW(nullptr, L"Black Ops III Mod Tools Launcher");
     	SetWindowTextW(launcherHwnd, L"Toe Knee's Mod Tools Improvement Project");
@@ -76,12 +37,8 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
     		MessageBoxA(launcherHwnd, "Failed to change build button text", "Error", MB_OK);
     	}
 
-        Hooks::HookIAT(hModule, "MessageBoxW");
-		MessageBoxW(nullptr, L"something :)", L"Hooked", MB_OK);
-		if (IsDebuggerPresent())
-			std::cout << "debug";
-
-    	std::cout << "IsDebuggerPresent called";
+        //Hooks::HookIAT(hModule, "MessageBoxW");
+		//MessageBoxW(nullptr, L"something :)", L"Hooked", MB_OK);
 	}
 	break;
     case DLL_THREAD_ATTACH:

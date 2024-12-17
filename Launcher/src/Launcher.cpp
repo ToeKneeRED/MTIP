@@ -4,7 +4,6 @@
 #include "framework.h"
 #include "Launcher.h"
 #include <Resource.h>
-#include <iostream>
 #include <thread>
 #include "Log.h"
 
@@ -27,14 +26,31 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	// TODO: Place code here.
-#if _DEBUG
-	SetupConsole();
+#if DEBUG
+	// color test
+	for(int i = 0; i < 256; i+=8)
+	{
+		for (int j = 0; j < 256; j+=8)
+		{
+			for (int k = 0; k < 256; k+=8)
+			{
+				//std::cout << std::format("\x1B[38;2;{};{};{}m", i, j, k) << i << ";" << j << ";" << k << Text<char>::Reset << "\t";
+			}
+		}
+	}
+	std::cout << std::endl;
 #endif
 
+	Log::Get().Print("Hello {}", ":)");
+	Log::Get().Verbose("Hello {}", ":)");
+	Log::Get().Warn("Hello {}", ":)");
+	Log::Get().Error("Hello {}", ":)");
+	Log::Get().Debug("Hello {}", ":)");
+
 	// Initialize global strings
-	LoadStringA(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	LoadStringA(hInstance, IDC_LAUNCHER, szWindowClass, MAX_LOADSTRING);
+	//LoadStringA(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+	//LoadStringA(hInstance, IDC_LAUNCHER, szWindowClass, MAX_LOADSTRING);
+
 	MyRegisterClass(hInstance);
 
 	// Perform application initialization:
@@ -75,7 +91,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
 	wcex.lpszMenuName   = MAKEINTRESOURCE(IDC_LAUNCHER);
-	wcex.lpszClassName  = szWindowClass;
+	wcex.lpszClassName  = "Launcher";
 	wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
 	return RegisterClassEx(&wcex);
@@ -167,12 +183,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance;
 
-	windowHandle = CreateWindowA(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-	  CW_USEDEFAULT, 0, 800, 600, nullptr, nullptr, hInstance, nullptr);
+	/*windowHandle = CreateWindowA(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+	  CW_USEDEFAULT, 0, 800, 600, nullptr, nullptr, hInstance, nullptr);*/
+	windowHandle = CreateWindowEx(0L, "Launcher", "Launcher", WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, 0, 800, 600, nullptr, nullptr, hInstance, nullptr);
 
 	if (!windowHandle)
 	{
-	  return FALSE;
+		auto err = GetLastError();
+		std::cout << "error: " << err;
+		return FALSE;
 	}
 
 	EnumWindows(EnumWindowsProc, NULL);
@@ -200,7 +220,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				GetCurrentDirectoryA(MAX_PATH, buffer);
 				std::string currentDirectory = buffer;
 
-				currentDirectory = currentDirectory.substr(0, currentDirectory.substr(0, currentDirectory.find_last_of('\\')).find_last_of('\\')).append(LAUNCHER_DLL_PATH);
+				currentDirectory = currentDirectory.substr(0, currentDirectory.substr(0, currentDirectory.find_last_of('\\')).find_last_of('\\')).append(kLauncherDllPath);
 
 				InjectDLL(pIter->processId, (LPCSTR)currentDirectory.c_str());
 			}
@@ -348,6 +368,9 @@ void SetupConsole() noexcept
 {
 	AllocConsole();
 	SetConsoleTitleW(L"MTIP Console");
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
 
 	FILE* stdinFile;
 	FILE* stdoutFile;
@@ -368,26 +391,30 @@ void SetupConsole() noexcept
 		std::cerr << "Error redirecting stderr\n";
 	}
 
-	SetConsoleOutputCP(CP_UTF8);
-	SetConsoleCP(CP_UTF8);
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (hConsole == INVALID_HANDLE_VALUE) {
+		std::cerr << "Error: unable to get handle to stdout." << std::endl;
+		return;
+	}
+
+	DWORD dwMode = 0;
+	if (!GetConsoleMode(hConsole, &dwMode)) {
+		std::cerr << "Error: unable to get console mode." << std::endl;
+		return;
+	}
+
+	// Enable virtual terminal processing (to handle ANSI codes)
+	dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+	if (!SetConsoleMode(hConsole, dwMode)) {
+		std::cerr << "Error: unable to set console mode." << std::endl;
+	}
+
 
 	CONSOLE_CURSOR_INFO cursorInfo;
 	GetConsoleCursorInfo(hConsole, &cursorInfo);
 	cursorInfo.dwSize = 1;
 	cursorInfo.bVisible = FALSE;
 	SetConsoleCursorInfo(hConsole, &cursorInfo);
-
-	//SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_INTENSITY);
-	//std::cout << "This is red text!" << std::endl;
-
-	//SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-	//std::cout << "This is green text!" << std::endl;
-
-	//SetConsoleTextAttribute(hConsole, FOREGROUND_BLUE | FOREGROUND_INTENSITY);
-	//std::cout << "This is blue text!" << std::endl;
-
-	SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 }
 
 BOOL ResizeButton(const std::vector<Button>::iterator& acIterator, const std::wstring& acWideText)

@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 
-#define LAUNCHER_DLL_PATH "\\common\\LauncherDll.dll"
+constexpr auto kLauncherDllPath = "\\common\\LauncherDll.dll";
 
 struct Button
 {
