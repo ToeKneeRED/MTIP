@@ -14,9 +14,4 @@ target("LauncherDll")
         "minhook"
     )
 
-    after_build(function (target)
-        local destination = path.join(os.projectdir(), "common");
-
-        os.cp(target:targetfile(), destination)
-        cprint("${bright green}[%s:after_build] Copied %s to %s${clear}", target:name(), target:filename(), destination)
-    end)
+    add_rules("copy_to_common", {operations = {"after_build"}})

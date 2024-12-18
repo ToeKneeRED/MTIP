@@ -5,9 +5,10 @@ target("Launcher")
     set_default(true)
 
     add_files("src/*.cpp")
+    add_extrafiles("resources/*")
     add_headerfiles("include/*.h")
-    
-    add_includedirs("include/")
+
     add_includedirs("resources/")
+    add_includedirs("include/")
 
     add_deps("Tools")

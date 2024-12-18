@@ -29,3 +29,54 @@ includes("LauncherDll")
 includes("Launcher")
 
 set_defaultmode("releasedbg")
+
+-- custom rules
+rule("copy_to_common") -- ex. add_rules("copy_to_common", {"operations", {"after_build"}})
+    before_build(function (target)
+        local operations = target:extraconf("rules", "copy_to_common", "operations") or {}
+
+        if table.contains(operations, "before_build") then
+            local destination = path.join(os.projectdir(), "common")
+
+            os.cp(target:targetfile(), destination)
+            cprint("${bright green}[%s:before_build] Copied %s to %s${clear}",
+                target:name(), target:filename(), destination)
+        end
+    end)
+
+    after_build(function (target)
+        local operations = target:extraconf("rules", "copy_to_common", "operations") or {}
+
+        if table.contains(operations, "after_build") then
+            local destination = path.join(os.projectdir(), "common")
+
+            os.cp(target:targetfile(), destination)
+            cprint("${bright green}[%s:after_build] Copied %s to %s${clear}",
+                target:name(), target:filename(), destination)
+        end
+    end)
+
+    before_clean(function (target)
+        local operations = target:extraconf("rules", "copy_to_common", "operations") or {}
+
+        if table.contains(operations, "before_clean") then
+            local destination = path.join(os.projectdir(), "common")
+
+            os.cp(target:targetfile(), destination)
+            cprint("${bright green}[%s:before_clean] Copied %s to %s${clear}",
+                target:name(), target:filename(), destination)
+        end
+    end)
+
+    after_clean(function (target)
+        local operations = target:extraconf("rules", "copy_to_common", "operations") or {}
+
+        if table.contains(operations, "after_clean") then
+            local destination = path.join(os.projectdir(), "common")
+
+            os.cp(target:targetfile(), destination)
+            cprint("${bright green}[%s:after_clean] Copied %s to %s${clear}",
+                target:name(), target:filename(), destination)
+        end
+    end)
+rule_end()
