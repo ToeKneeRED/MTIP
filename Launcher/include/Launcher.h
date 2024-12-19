@@ -2,9 +2,15 @@
 
 #include <vector>
 #include <filesystem>
+#include <iostream>
 #include <string>
 
-constexpr auto kLauncherDllPath = "\\common\\LauncherDll.dll";
+#include "Log.h"
+
+namespace Path
+{
+    constexpr auto kLauncherDllPath = "\\common\\LauncherDll.dll";
+} // namespace Path
 
 struct Button
 {
@@ -47,20 +53,14 @@ struct Button
     HWND windowHandle = nullptr;
 };
 
-void SetupConsole() noexcept;
-
-BOOL InjectDLL(DWORD aProcessId, LPCSTR apDllPath);
 
 BOOL ResizeButton(const std::vector<Button>::iterator& acIterator, const std::wstring& acWideText);
-
 LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);
+BOOL InjectDLL(DWORD aProcessId, LPCSTR apDllPath);
 
 HHOOK keyboardHook;
-
-static HWND windowHandle{};
-
+HWND windowHandle{};
 std::vector<Button> buttons{};
-std::vector<Button> visibleWindows{};
 
 HFONT buttonFont = CreateFont(
     22,                  // Height of the font
@@ -78,7 +78,6 @@ HFONT buttonFont = CreateFont(
     DEFAULT_QUALITY,     // Pitch and family
     "Coolvetica Regular" // Font name
 );
-
 HFONT titleFont = CreateFont(
     32,                  // Height of the font
     0,                   // Width of the font (0 for default)
@@ -95,3 +94,74 @@ HFONT titleFont = CreateFont(
     DEFAULT_QUALITY,     // Pitch and family
     "Coolvetica Regular" // Font name
 );
+
+BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM lParam)
+{
+    DWORD dwProcessId;
+    wchar_t text[255]{'\0'};
+
+    GetWindowThreadProcessId(hWnd, &dwProcessId);
+
+    auto iter = std::find_if(
+        buttons.begin(), buttons.end(),
+        [&](const Button& acButton)
+        { return acButton.windowHandle == hWnd || acButton.processId == dwProcessId || acButton.handle == hWnd; });
+
+    if (!hWnd || !IsWindowVisible(hWnd) || iter != buttons.end() || !GetWindowTextW(hWnd, text, sizeof(text)))
+        return TRUE;
+
+    std::wstring wideText(text);
+
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wideText[0], (int)wideText.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &wideText[0], (int)wideText.size(), &strTo[0], size_needed, NULL, NULL);
+
+    if (ResizeButton(iter, wideText))
+        return TRUE;
+
+    HDC hdc = GetDC(windowHandle);
+    SIZE textSize;
+    GetTextExtentPoint32W(hdc, wideText.c_str(), static_cast<int>(wideText.length()), &textSize);
+    ReleaseDC(windowHandle, hdc);
+
+    const int& padding = 15;
+    const int& buttonWidth = textSize.cx + padding * 2;
+    const int& buttonHeight = textSize.cy + padding;
+
+    RECT rcClient;
+    GetClientRect(windowHandle, &rcClient);
+
+    const int& x = (rcClient.right - buttonWidth) / 2;
+    const int& y = static_cast<int>(buttons.size()) * (buttonHeight + 10) + padding;
+
+    HWND buttonHandle = CreateWindowW(
+        L"BUTTON", wideText.c_str(), WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, x, y, buttonWidth,
+        buttonHeight, windowHandle, (HMENU)dwProcessId, (HINSTANCE)GetWindowLongPtr(windowHandle, GWLP_HINSTANCE),
+        NULL);
+
+    if (!buttonHandle)
+        std::wcout << L"Button creation failed: " << GetLastError() << L"\n";
+
+    Button* newButton = new Button{wideText, dwProcessId, buttonHandle, hWnd};
+    buttons.emplace_back(*newButton);
+
+    return TRUE;
+}
+
+void WindowCheck()
+{
+    for (auto iter = buttons.begin(); iter != buttons.end();)
+    {
+        if (!IsWindowVisible(iter->windowHandle))
+        {
+            DestroyWindow(iter->handle);
+            iter = buttons.erase(iter);
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+
+    EnumWindows(EnumWindowsProc, NULL);
+}

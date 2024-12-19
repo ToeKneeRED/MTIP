@@ -3,9 +3,9 @@
 
 #include "framework.h"
 #include "Launcher.h"
+
+#include <iostream>
 #include <Resource.h>
-#include <thread>
-#include "Log.h"
 
 constexpr auto MAX_LOADSTRING = 100;
 
@@ -24,7 +24,7 @@ wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-#if DEBUG
+#if 0
     // color test
     for (int i = 0; i < 256; i += 8)
     {
@@ -32,19 +32,20 @@ wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR
         {
             for (int k = 0; k < 256; k += 8)
             {
-                // std::cout << std::format("\x1B[38;2;{};{};{}m", i, j, k) << i << ";" << j << ";" << k <<
-                // Text<char>::Reset << "\t";
+                std::cout << std::format("\x1B[38;2;{};{};{}m", i, j, k) << i << ";" << j << ";" << k
+                    << Text<char>::Reset << "\t";
             }
         }
     }
     std::cout << std::endl;
 #endif
 
-    Log::Get().Print("Hello {}", ":)");
-    Log::Get().Verbose("Hello {}", ":)");
-    Log::Get().Warn("Hello {}", ":)");
-    Log::Get().Error("Hello {}", ":)");
-    Log::Get().Debug("Hello {}", ":)");
+    auto& log = Log::Get();
+    log.Print("thing1");
+    log.Verbose("thing2");
+    log.Warn("thing3");
+    log.Error("thing4");
+    log.Debug("thing5");
 
     // Initialize global strings
     // LoadStringA(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -65,6 +66,8 @@ wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR
     // Main message loop:
     while (GetMessage(&msg, nullptr, 0, 0))
     {
+        WindowCheck();
+
         if (!TranslateAcceleratorW(msg.hwnd, hAccelTable, &msg))
         {
             TranslateMessage(&msg);
@@ -96,93 +99,12 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassEx(&wcex);
 }
 
-BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM lParam)
-{
-    DWORD dwProcessId;
-    wchar_t text[255]{'\0'};
-
-    GetWindowThreadProcessId(hWnd, &dwProcessId);
-
-    auto iter = std::find_if(
-        buttons.begin(), buttons.end(), [&](const Button& acButton)
-        { return acButton.windowHandle == hWnd || acButton.processId == dwProcessId || acButton.handle == hWnd; });
-
-    if (!hWnd || !IsWindowVisible(hWnd) || iter != buttons.end() ||
-        !SendMessageW(hWnd, WM_GETTEXT, sizeof(text), reinterpret_cast<LPARAM>(text)))
-        return TRUE;
-
-    std::wstring wideText(text);
-
-    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wideText[0], (int)wideText.size(), NULL, 0, NULL, NULL);
-    std::string strTo(size_needed, 0);
-    WideCharToMultiByte(CP_UTF8, 0, &wideText[0], (int)wideText.size(), &strTo[0], size_needed, NULL, NULL);
-
-    if (ResizeButton(iter, wideText))
-        return TRUE;
-
-    std::wcout << strTo.c_str() << L"\n";
-
-    // Get the size of the text
-    HDC hdc = GetDC(windowHandle);
-    SIZE textSize;
-    GetTextExtentPoint32W(hdc, wideText.c_str(), static_cast<int>(wideText.length()), &textSize);
-    ReleaseDC(windowHandle, hdc);
-
-    const int& padding = 15;
-    const int& buttonWidth = textSize.cx + padding * 2;
-    const int& buttonHeight = textSize.cy + padding;
-
-    RECT rcClient;
-    GetClientRect(windowHandle, &rcClient);
-
-    const int& x = (rcClient.right - buttonWidth) / 2;
-    const int& y = static_cast<int>(buttons.size()) * (buttonHeight + 10);
-
-    HWND buttonHandle = CreateWindowW(
-        L"BUTTON", wideText.c_str(), WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, x, y, buttonWidth,
-        buttonHeight, windowHandle, (HMENU)dwProcessId, (HINSTANCE)GetWindowLongPtr(windowHandle, GWLP_HINSTANCE),
-        NULL);
-
-    if (!buttonHandle)
-        std::wcout << L"Button creation failed: " << GetLastError() << L"\n";
-
-    Button* newButton = new Button{wideText, dwProcessId, buttonHandle, hWnd};
-    buttons.emplace_back(*newButton);
-
-    return TRUE;
-}
-
-static void WindowCheckThread()
-{
-    while (true)
-    {
-        for (auto iter = buttons.begin(); iter != buttons.end();)
-        {
-            if (!IsWindowVisible(iter->windowHandle))
-            {
-                DestroyWindow(iter->handle);
-                iter = buttons.erase(iter);
-            }
-            else
-            {
-                ++iter;
-            }
-        }
-
-        // EnumWindows(EnumWindowsProc, NULL);
-
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-}
-
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance;
 
-    /*windowHandle = CreateWindowA(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, 800, 600, nullptr, nullptr, hInstance, nullptr);*/
     windowHandle = CreateWindowEx(
-        0L, "Launcher", "Launcher", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, 800, 600, nullptr, nullptr, hInstance,
+        0L, "Launcher", "Launcher", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, 800, 1000, nullptr, nullptr, hInstance,
         nullptr);
 
     if (!windowHandle)
@@ -191,9 +113,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         std::cout << "error: " << err;
         return FALSE;
     }
-
-    EnumWindows(EnumWindowsProc, NULL);
-    // std::thread(WindowCheckThread).detach();
 
     ShowWindow(windowHandle, nCmdShow);
     UpdateWindow(windowHandle);
@@ -215,16 +134,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         if (pIter != buttons.end())
         {
-            char buffer[MAX_PATH];
-            GetCurrentDirectoryA(MAX_PATH, buffer);
-            std::string currentDirectory = buffer;
+            auto path = std::filesystem::current_path();
 
-            currentDirectory =
-                currentDirectory
-                    .substr(0, currentDirectory.substr(0, currentDirectory.find_last_of('\\')).find_last_of('\\'))
-                    .append(kLauncherDllPath);
+            // unpleasant but works for now
+            for (int i = 0; i < 4; ++i)
+            {
+                if (path.has_parent_path())
+                {
+                    path = path.parent_path();
+                }
+                else
+                {
+                    break;
+                }
+            }
 
-            InjectDLL(pIter->processId, (LPCSTR)currentDirectory.c_str());
+            std::string dllPath = path.string().append(Path::kLauncherDllPath);
+
+            if (std::filesystem::exists(dllPath))
+            {
+                InjectDLL(pIter->processId, dllPath.c_str());
+            }
         }
 
         switch (wmId)
@@ -338,7 +268,9 @@ BOOL InjectDLL(DWORD aProcessId, LPCSTR apDllPath)
     LPVOID remoteString = (LPVOID)VirtualAllocEx(process, nullptr, strlen(apDllPath) + 1, MEM_COMMIT, PAGE_READWRITE);
 
     if (WriteProcessMemory(process, remoteString, (LPVOID)apDllPath, strlen(apDllPath) + 1, nullptr))
+    {
         CreateRemoteThread(process, nullptr, NULL, (LPTHREAD_START_ROUTINE)processAddress, remoteString, NULL, nullptr);
+    }
 
     CloseHandle(process);
 
@@ -362,71 +294,12 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
     return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
 }
 
-void SetupConsole() noexcept
-{
-    AllocConsole();
-    SetConsoleTitleW(L"MTIP Console");
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-
-    FILE* stdinFile;
-    FILE* stdoutFile;
-    FILE* stderrFile;
-
-    // Redirect stdin
-    if (freopen_s(&stdinFile, "conin$", "r", stdin) != 0)
-    {
-        std::cerr << "Error redirecting stdin\n";
-    }
-
-    // Redirect stdout
-    if (freopen_s(&stdoutFile, "conout$", "w", stdout) != 0)
-    {
-        std::cerr << "Error redirecting stdout\n";
-    }
-
-    // Redirect stderr
-    if (freopen_s(&stderrFile, "conout$", "w", stderr) != 0)
-    {
-        std::cerr << "Error redirecting stderr\n";
-    }
-
-    if (hConsole == INVALID_HANDLE_VALUE)
-    {
-        std::cerr << "Error: unable to get handle to stdout." << std::endl;
-        return;
-    }
-
-    DWORD dwMode = 0;
-    if (!GetConsoleMode(hConsole, &dwMode))
-    {
-        std::cerr << "Error: unable to get console mode." << std::endl;
-        return;
-    }
-
-    // Enable virtual terminal processing (to handle ANSI codes)
-    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-
-    if (!SetConsoleMode(hConsole, dwMode))
-    {
-        std::cerr << "Error: unable to set console mode." << std::endl;
-    }
-
-    CONSOLE_CURSOR_INFO cursorInfo;
-    GetConsoleCursorInfo(hConsole, &cursorInfo);
-    cursorInfo.dwSize = 1;
-    cursorInfo.bVisible = FALSE;
-    SetConsoleCursorInfo(hConsole, &cursorInfo);
-}
-
 BOOL ResizeButton(const std::vector<Button>::iterator& acIterator, const std::wstring& acWideText)
 {
     LPWSTR windowText = (LPWSTR)acWideText.c_str();
 
     if (acIterator != buttons.end() && windowText != acIterator->text && !acIterator->text.empty())
     {
-        // Get the size of the text
         HDC hdc = GetDC(windowHandle);
         SIZE textSize;
         GetTextExtentPoint32W(hdc, acWideText.c_str(), static_cast<int>(acWideText.length()), &textSize);

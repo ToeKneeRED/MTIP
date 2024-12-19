@@ -10,6 +10,8 @@ if(is_plat("windows")) then
     add_syslinks("kernel32")
     add_syslinks("user32")
     add_syslinks("Gdi32")
+
+    add_ldflags("-subsystem:windows", {force = true})
 end
 
 add_rules("mode.debug", "mode.releasedbg", "mode.release")
