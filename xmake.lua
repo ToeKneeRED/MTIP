@@ -1,3 +1,6 @@
+set_project("MTIP")
+set_version("0.0.1")
+
 set_languages("c11", "cxx23")
 set_policy("build.ccache", false)
 set_policy("package.requires_lock", false)
@@ -10,6 +13,7 @@ if(is_plat("windows")) then
     add_syslinks("kernel32")
     add_syslinks("user32")
     add_syslinks("Gdi32")
+    add_syslinks("Shell32")
 
     add_ldflags("-subsystem:windows", {force = true})
 end
@@ -17,10 +21,12 @@ end
 add_rules("mode.debug", "mode.releasedbg", "mode.release")
 add_rules("plugin.vsxmake.autoupdate")
 
-add_requires("spdlog v1.13.0", "minhook v1.3.3")
+add_requires("spdlog v1.13.0", "minhook v1.3.3", "qt5base", "qt5core", "qt5gui", "qt5widgets")
+add_requireconfs("qt5widgets", {debug = is_mode("debug")})
 
 if is_mode("debug") then
     add_defines("DEBUG")
+    add_defines("QT_DEBUG")
 end
 
 add_includedirs("Tools/include", {public = true})

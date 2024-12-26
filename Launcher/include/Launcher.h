@@ -9,7 +9,7 @@
 
 namespace Path
 {
-    constexpr auto kLauncherDllPath = "\\common\\LauncherDll.dll";
+constexpr auto kLauncherDllPath = "\\common\\LauncherDll.dll";
 } // namespace Path
 
 struct Button
@@ -52,7 +52,6 @@ struct Button
     HWND handle = nullptr;
     HWND windowHandle = nullptr;
 };
-
 
 BOOL ResizeButton(const std::vector<Button>::iterator& acIterator, const std::wstring& acWideText);
 LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam);
@@ -103,8 +102,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hWnd, LPARAM lParam)
     GetWindowThreadProcessId(hWnd, &dwProcessId);
 
     auto iter = std::find_if(
-        buttons.begin(), buttons.end(),
-        [&](const Button& acButton)
+        buttons.begin(), buttons.end(), [&](const Button& acButton)
         { return acButton.windowHandle == hWnd || acButton.processId == dwProcessId || acButton.handle == hWnd; });
 
     if (!hWnd || !IsWindowVisible(hWnd) || iter != buttons.end() || !GetWindowTextW(hWnd, text, sizeof(text)))

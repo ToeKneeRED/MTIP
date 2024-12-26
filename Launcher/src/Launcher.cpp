@@ -41,11 +41,6 @@ wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR
 #endif
 
     auto& log = Log::Get();
-    log.Print("thing1");
-    log.Verbose("thing2");
-    log.Warn("thing3");
-    log.Error("thing4");
-    log.Debug("thing5");
 
     // Initialize global strings
     // LoadStringA(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -104,7 +99,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     hInst = hInstance;
 
     windowHandle = CreateWindowEx(
-        0L, "Launcher", "Launcher", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, 800, 1000, nullptr, nullptr, hInstance,
+        0L, "Launcher", "Launcher", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, 800, 600, nullptr, nullptr, hInstance,
         nullptr);
 
     if (!windowHandle)
@@ -153,7 +148,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             if (std::filesystem::exists(dllPath))
             {
-                InjectDLL(pIter->processId, dllPath.c_str());
+                if(InjectDLL(pIter->processId, dllPath.c_str()))
+                    Log::Get().Print(std::string("Injected ").append(dllPath).c_str());
             }
         }
 
@@ -269,7 +265,11 @@ BOOL InjectDLL(DWORD aProcessId, LPCSTR apDllPath)
 
     if (WriteProcessMemory(process, remoteString, (LPVOID)apDllPath, strlen(apDllPath) + 1, nullptr))
     {
-        CreateRemoteThread(process, nullptr, NULL, (LPTHREAD_START_ROUTINE)processAddress, remoteString, NULL, nullptr);
+        if(CreateRemoteThread(process, nullptr, NULL, (LPTHREAD_START_ROUTINE)processAddress, remoteString, NULL, nullptr))
+            Log::Get().Print("Remote thread created: {}", apDllPath);
+    } else
+    {
+        Log::Get().Print("Failed to write process memory");
     }
 
     CloseHandle(process);
@@ -319,7 +319,6 @@ BOOL ResizeButton(const std::vector<Button>::iterator& acIterator, const std::ws
         acIterator->text = windowText;
 
         SetWindowPos(acIterator->handle, nullptr, x, y, buttonWidth, buttonHeight, SWP_NOZORDER | SWP_NOMOVE);
-
         RedrawWindow(acIterator->handle, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 
         return TRUE;
